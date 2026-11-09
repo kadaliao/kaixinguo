@@ -114,6 +114,10 @@ func (a *app) playerShortcuts(c *ui.Context) {
 	c.OnShortcut(0, ui.KeySpace, func() { a.evalJS("kx.toggle()") })
 	c.OnShortcut(0, ui.KeyLeft, func() { a.evalJS("kx.seek(-5)") })
 	c.OnShortcut(0, ui.KeyRight, func() { a.evalJS("kx.seek(5)") })
+	c.OnShortcut(ui.Shift, ui.KeyLeft, func() { a.evalJS("kx.seek(-30)") })
+	c.OnShortcut(ui.Shift, ui.KeyRight, func() { a.evalJS("kx.seek(30)") })
+	c.OnShortcut(0, ui.KeyBracketLeft, func() { a.evalJS("kx.nudgeRate(-1)") })
+	c.OnShortcut(0, ui.KeyBracketRight, func() { a.evalJS("kx.nudgeRate(1)") })
 	c.OnShortcut(0, ui.KeyDown, func() { a.step(1) })
 	c.OnShortcut(0, ui.KeyUp, func() { a.step(-1) })
 	c.OnShortcut(0, ui.KeyEscape, a.playerEscape)
@@ -418,6 +422,6 @@ func (a *app) playerPanelBody(c *ui.Context, sp *seriesPage, drawer, forceReveal
 			}
 		})
 	})
-	ui.Text(c, "空格 暂停　← → 快进快退　↑ ↓ 换集").FontSize(11).TextColor(t.TextMuted.Alpha(0.8)).
-		Padding(10, 22, 16, 22).SingleLine()
+	ui.Text(c, "空格 暂停　← → 5 秒　⇧← ⇧→ 30 秒\n[ ] 倍速　↑ ↓ 换集").FontSize(11).TextColor(t.TextMuted.Alpha(0.8)).
+		Padding(10, 22, 16, 22).MaxLines(2)
 }

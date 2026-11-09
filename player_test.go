@@ -160,7 +160,7 @@ func TestTheaterEventWithoutTheCurrentEpisode(t *testing.T) {
 // The player's controls are the app's bottom bar, not the video's native
 // ones, which put the small window and full screen buttons over the picture.
 func TestPlayerControlsAreTheBottomBar(t *testing.T) {
-	for _, want := range []string{`id="bar"`, `id="seek"`, `id="vol"`, `id="pip"`, `<video id="v" playsinline`} {
+	for _, want := range []string{`id="bar"`, `id="seek"`, `id="vol"`, `id="rate"`, `playbackRate`, `nudgeRate`, `shiftKey`, `id="pip"`, `<video id="v" playsinline`} {
 		if !strings.Contains(playerHTML, want) {
 			t.Fatalf("the player page has no %s", want)
 		}
