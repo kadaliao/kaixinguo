@@ -215,12 +215,11 @@ func (a *app) newFetcher(date string) fetcher {
 
 func (a *app) searchFetcher(query string) fetcher {
 	return func(ctx context.Context, cursor string) (page, error) {
-		// The 剧集 tab lists each season of a series; 综合 shows its first
-		// season alone, among clips.
-		r, err := a.client.Search(ctx, query, sdk.SearchOptions{Tab: "剧集", Cursor: cursor, PageSize: 20})
-		if err != nil && !errors.Is(err, sdk.ErrAnonymousLimited) && !errors.Is(err, sdk.ErrEndOfList) {
-			r, err = a.client.Search(ctx, query, sdk.SearchOptions{Cursor: cursor, PageSize: 20})
-		}
+		// 综合 lists each season of a series, among clips. The 剧集 tab
+		// answers an anonymous guest with an empty tab bar, which the SDK
+		// reports as ErrAnonymousLimited; treating that as nothing found
+		// made every search miss.
+		r, err := a.client.Search(ctx, query, sdk.SearchOptions{Cursor: cursor, PageSize: 20})
 		if err != nil {
 			if errors.Is(err, sdk.ErrAnonymousLimited) || errors.Is(err, sdk.ErrEndOfList) {
 				return page{}, nil // nothing found
