@@ -215,6 +215,15 @@ func (a *app) onPlayerEvent(q url.Values) {
 			a.web.Page().TogglePictureInPicture()
 		}
 		return
+	case "chrome":
+		a.playerChrome = q.Get("on") != "0"
+		return
+	case "next":
+		a.step(1)
+		return
+	case "prev":
+		a.step(-1)
+		return
 	}
 	ep, _ := sp.episode(p.number)
 	if id := q.Get("ep"); id != "" && id != ep.ID {
@@ -243,10 +252,6 @@ func (a *app) onPlayerEvent(q url.Values) {
 		if id, n, ok := a.following(sp, p.number); ok {
 			a.play(id, n, 0)
 		}
-	case "next":
-		a.step(1)
-	case "prev":
-		a.step(-1)
 	case "error":
 		p.state, p.msg = playFailed, "视频加载失败，请重试"
 		delete(a.futures, ep.ID)

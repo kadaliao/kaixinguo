@@ -213,13 +213,24 @@ func (a *app) newFetcher(date string) fetcher {
 	}
 }
 
+// generalCursor marks a search cursor that pages through the 综合 tab.
+const generalCursor = "综合:"
+
 func (a *app) searchFetcher(query string) fetcher {
 	return func(ctx context.Context, cursor string) (page, error) {
 		// The 剧集 tab lists each season of a series; 综合 shows its first
-		// season alone, among clips.
-		r, err := a.client.Search(ctx, query, sdk.SearchOptions{Tab: "剧集", Cursor: cursor, PageSize: 20})
-		if err != nil && !errors.Is(err, sdk.ErrAnonymousLimited) && !errors.Is(err, sdk.ErrEndOfList) {
-			r, err = a.client.Search(ctx, query, sdk.SearchOptions{Cursor: cursor, PageSize: 20})
+		// season alone, among clips. Some anonymous devices get an empty
+		// 剧集 tab, which the SDK reports as ErrAnonymousLimited, so a first
+		// page that finds nothing there asks 综合 instead. The cursor
+		// carries the tab, keeping the later pages on the first one's.
+		tab := "剧集"
+		if rest, ok := strings.CutPrefix(cursor, generalCursor); ok {
+			tab, cursor = "", rest
+		}
+		r, err := a.client.Search(ctx, query, sdk.SearchOptions{Tab: tab, Cursor: cursor, PageSize: 20})
+		if tab != "" && cursor == "" && err != nil && !errors.Is(err, sdk.ErrEndOfList) {
+			tab = ""
+			r, err = a.client.Search(ctx, query, sdk.SearchOptions{PageSize: 20})
 		}
 		if err != nil {
 			if errors.Is(err, sdk.ErrAnonymousLimited) || errors.Is(err, sdk.ErrEndOfList) {
@@ -228,6 +239,9 @@ func (a *app) searchFetcher(query string) fetcher {
 			return page{}, err
 		}
 		out := page{cursor: r.Cursor, more: r.HasMore && len(r.Items) > 0}
+		if tab == "" && out.cursor != "" {
+			out.cursor = generalCursor + out.cursor
+		}
 		var missing []string
 		for _, s := range r.Items {
 			out.cards = append(out.cards, summaryCard(s))

@@ -160,13 +160,81 @@ func TestTheaterEventWithoutTheCurrentEpisode(t *testing.T) {
 // The player's controls are the app's bottom bar, not the video's native
 // ones, which put the small window and full screen buttons over the picture.
 func TestPlayerControlsAreTheBottomBar(t *testing.T) {
-	for _, want := range []string{`id="bar"`, `id="seek"`, `id="vol"`, `id="rate"`, `playbackRate`, `nudgeRate`, `shiftKey`, `id="pip"`, `<video id="v" playsinline`} {
+	for _, want := range []string{`id="bar"`, `id="seek"`, `id="vol"`, `id="rate"`, `playbackRate`, `nudgeRate`, `shiftKey`,
+		`id="pip"`, `id="prev"`, `id="rew"`, `id="fwd"`, `id="next"`, `<video id="v" playsinline`} {
 		if !strings.Contains(playerHTML, want) {
 			t.Fatalf("the player page has no %s", want)
 		}
 	}
 	if strings.Contains(playerHTML, `<video id="v" controls`) {
 		t.Fatal("the player page still uses the native video controls")
+	}
+	// The transport buttons sit above the progress bar, centered.
+	if strings.Index(playerHTML, `id="transport"`) > strings.Index(playerHTML, `id="seek"`) {
+		t.Fatal("the transport buttons are not above the progress bar")
+	}
+	if !strings.Contains(playerHTML, "#transport{display:flex;align-items:center;justify-content:center;gap:10px;height:36px}") {
+		t.Fatal("the transport buttons are not centered")
+	}
+	// The bar and its progress line are centered and shorter than the
+	// picture, and translucent enough to keep the picture visible.
+	for _, want := range []string{
+		"#bar{position:fixed;left:50%",
+		"width:min(680px,calc(100% - 24px));box-sizing:border-box",
+		"background:rgba(24,24,26,.42)",
+		"#seek{flex:0 1 320px",
+		"const hideAfter = 2000;",
+	} {
+		if !strings.Contains(playerHTML, want) {
+			t.Fatalf("the player bar no longer has %q", want)
+		}
+	}
+}
+
+// In the theater the top buttons follow the bottom bar: both hide while
+// the picture plays, and both come back when the pointer moves.
+func TestTheaterTopButtonsFollowTheBar(t *testing.T) {
+	a, tt := playerApp(t)
+	click(t, tt, "影院")
+	if !tt.HasText("退出播放") || !tt.HasText("退出影院") {
+		t.Fatalf("no top buttons at first: %q", tt.Texts())
+	}
+
+	a.onPlayerEvent(url.Values{"type": {"chrome"}, "on": {"0"}, "ep": {"e1"}})
+	tt.Frame()
+	if tt.HasText("退出播放") || tt.HasText("退出影院") {
+		t.Fatalf("top buttons stay when the bar hides: %q", tt.Texts())
+	}
+
+	a.onPlayerEvent(url.Values{"type": {"chrome"}, "on": {"1"}, "ep": {"e1"}})
+	tt.Frame()
+	if !tt.HasText("退出播放") || !tt.HasText("退出影院") {
+		t.Fatalf("top buttons do not come back with the bar: %q", tt.Texts())
+	}
+}
+
+// The page cannot see the pointer over the top buttons, so they stay while
+// it rests on them, and go once it leaves them.
+func TestTheaterTopButtonsStayUnderThePointer(t *testing.T) {
+	a, tt := playerApp(t)
+	click(t, tt, "影院")
+	r, ok := tt.Find("退出影院")
+	if !ok {
+		t.Fatalf("no 退出影院: %q", tt.Texts())
+	}
+	tt.Move(r.X+r.W/2, r.Y+r.H/2)
+	tt.Frame()
+
+	a.onPlayerEvent(url.Values{"type": {"chrome"}, "on": {"0"}, "ep": {"e1"}})
+	tt.Frame()
+	if !tt.HasText("退出播放") || !tt.HasText("退出影院") {
+		t.Fatalf("the top buttons hide under the pointer: %q", tt.Texts())
+	}
+
+	tt.Move(r.X+r.W/2, r.Y+300)
+	tt.Frame()
+	if tt.HasText("退出播放") || tt.HasText("退出影院") {
+		t.Fatalf("the top buttons stay after the pointer leaves them: %q", tt.Texts())
 	}
 }
 

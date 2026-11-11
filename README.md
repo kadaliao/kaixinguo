@@ -14,6 +14,7 @@
   <a href="https://github.com/kadaliao/kaixinguo/actions/workflows/ci.yml"><img src="https://github.com/kadaliao/kaixinguo/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/macOS-12%2B-111?logo=apple" alt="macOS 12+">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/kadaliao/kaixinguo" alt="MIT"></a>
+  <a href="https://awesomemygo.dev/apps/kaixinguo"><img src="https://awesomemygo.dev/badge.svg" height="20" alt="Listed on Awesome MyGo"></a>
 </p>
 
 ![开心果的推荐页](docs/screenshots/discover.webp)
@@ -63,7 +64,7 @@
 | Esc | 退出播放；影院中先收起选集、退出全屏 |
 | 双击视频 | 进入 / 退出影院 |
 
-播放时，双击视频或点右上角的「影院」进入全屏；鼠标靠近右侧边缘，选集自动出现，鼠标离开选集区域后自动收起。底部播放栏集中了播放/暂停、进度、音量和小窗，放映时自动收起，移动鼠标出现。鼠标滚轮或触控板在视频右半边上下滑动调音量，左半边调亮度。
+播放时，双击视频或点右上角的「影院」进入全屏；鼠标靠近右侧边缘，选集自动出现，鼠标离开选集区域后自动收起。底部播放栏集中了播放/暂停、快退/快进、上一集/下一集、进度、音量、倍速和小窗；放映时底部栏和顶部按钮一起收起，移动鼠标一起出现。鼠标滚轮或触控板在视频右半边上下滑动调音量，左半边调亮度。
 
 观看记录和收藏只存在本机，不会上传：
 
