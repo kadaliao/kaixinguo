@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.5.0] - 2026-11-11
+
 ### 新增
 
 - 影院模式下，顶部按钮随底部播放栏一起隐藏和出现；播放栏新增快退/快进 10 秒、上一集/下一集。
@@ -75,7 +77,8 @@
 - 暂不支持分段（DASH/HLS）的长视频
 - 第一次启动要注册匿名设备，网络慢时列表可能要等十几秒才出来；之后启动会先显示缓存
 
-[未发布]: https://github.com/kadaliao/kaixinguo/compare/v0.4.0...HEAD
+[未发布]: https://github.com/kadaliao/kaixinguo/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/kadaliao/kaixinguo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/kadaliao/kaixinguo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/kadaliao/kaixinguo/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/kadaliao/kaixinguo/compare/v0.1.0...v0.2.0
