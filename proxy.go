@@ -336,14 +336,20 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;backgr
   background:rgba(18,18,20,.78);color:#fff;font:500 12px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
   letter-spacing:.02em;opacity:0;transition:opacity .16s ease;pointer-events:none;z-index:3;white-space:nowrap}
 #hud.show{opacity:1}
-#bar{position:fixed;left:12px;right:12px;bottom:12px;height:56px;display:flex;align-items:center;gap:8px;
-  padding:0 12px;border-radius:15px;background:rgba(24,24,26,.82);-webkit-backdrop-filter:blur(22px);
-  backdrop-filter:blur(22px);box-shadow:0 10px 34px rgba(0,0,0,.38);color:#fff;z-index:2;
-  opacity:0;transform:translateY(8px);transition:opacity .18s ease,transform .18s ease;pointer-events:none}
-body.controls #bar{opacity:1;transform:none;pointer-events:auto}
+#bar{position:fixed;left:50%;bottom:12px;width:min(680px,calc(100% - 24px));box-sizing:border-box;display:flex;flex-direction:column;gap:4px;
+  padding:8px 14px 7px;border-radius:15px;background:rgba(24,24,26,.42);-webkit-backdrop-filter:blur(18px);
+  backdrop-filter:blur(18px);box-shadow:0 8px 28px rgba(0,0,0,.26);color:#fff;z-index:2;
+  opacity:0;transform:translate(-50%,8px);transition:opacity .18s ease,transform .18s ease;pointer-events:none}
+body.controls #bar{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 body:not(.controls){cursor:none}
+#transport{display:flex;align-items:center;justify-content:center;gap:10px;height:36px}
+#track{display:flex;align-items:center;justify-content:center;gap:8px;height:28px}
 #bar .ctl{width:28px;height:28px;flex:none;padding:0;border:0;border-radius:8px;background:transparent;
   color:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;cursor:pointer}
+#transport .ctl{width:32px;height:32px;border-radius:10px}
+#transport #play{width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.1)}
+#transport #play:hover{background:rgba(255,255,255,.17)}
+#transport #play:active{background:rgba(255,255,255,.24)}
 #bar .ctl:hover{background:rgba(255,255,255,.12)}
 #bar .ctl:active{background:rgba(255,255,255,.2)}
 #bar .ctl svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -358,25 +364,41 @@ input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radi
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;
   background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4);opacity:0;transition:opacity .12s}
 #bar:hover input[type=range]::-webkit-slider-thumb{opacity:1}
-#seek{flex:1;min-width:50px}
-#vol{width:76px;flex:none}
+#seek{flex:0 1 320px;width:320px;min-width:50px}
+#vol{width:72px;flex:none}
 </style></head>
 <body><video id="v" playsinline preload="auto"></video>
 <div id="bar" role="group" aria-label="播放控制">
-  <button id="play" class="ctl" aria-label="播放">
-    <svg class="play" viewBox="0 0 24 24"><path d="M8 5.2v13.6L19 12z" fill="currentColor" stroke="none"/></svg>
-    <svg class="pause" viewBox="0 0 24 24"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z" fill="currentColor" stroke="none"/></svg>
-  </button>
-  <span id="cur" class="time">0:00</span>
-  <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="播放进度">
-  <span id="dur" class="time">0:00</span>
-  <button id="mute" class="ctl" aria-label="静音">
-    <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path class="wave" d="M16 9.2a4 4 0 0 1 0 5.6M18.6 6.8a7.5 7.5 0 0 1 0 10.4"/></svg>
-  </button>
-  <input id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="音量">
-  <button id="pip" class="ctl" aria-label="小窗播放">
-    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><rect x="12" y="12" width="7.5" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></svg>
-  </button>
+  <div id="transport" role="group" aria-label="播放与换集">
+    <button id="prev" class="ctl" aria-label="上一集" title="上一集">
+      <svg viewBox="0 0 24 24"><path d="M6 5v14"/><path d="M18 6.5 9.5 12 18 17.5z" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="rew" class="ctl" aria-label="快退 10 秒" title="快退 10 秒">
+      <svg viewBox="0 0 24 24"><path d="M11 6 4 12l7 6zM20 6l-7 6 7 6z" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="play" class="ctl" aria-label="播放">
+      <svg class="play" viewBox="0 0 24 24"><path d="M8 5.2v13.6L19 12z" fill="currentColor" stroke="none"/></svg>
+      <svg class="pause" viewBox="0 0 24 24"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="fwd" class="ctl" aria-label="快进 10 秒" title="快进 10 秒">
+      <svg viewBox="0 0 24 24"><path d="M13 6l7 6-7 6zM4 6l7 6-7 6z" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="next" class="ctl" aria-label="下一集" title="下一集">
+      <svg viewBox="0 0 24 24"><path d="M18 5v14"/><path d="M6 6.5 14.5 12 6 17.5z" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+  <div id="track" role="group" aria-label="进度和音量">
+    <span id="cur" class="time">0:00</span>
+    <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="播放进度">
+    <span id="dur" class="time">0:00</span>
+    <button id="mute" class="ctl" aria-label="静音">
+      <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path class="wave" d="M16 9.2a4 4 0 0 1 0 5.6M18.6 6.8a7.5 7.5 0 0 1 0 10.4"/></svg>
+    </button>
+    <input id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="音量">
+    <button id="pip" class="ctl" aria-label="小窗播放">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><rect x="12" y="12" width="7.5" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
 </div>
 <div id="hud"></div>
 <script>
@@ -388,10 +410,15 @@ const vol = document.getElementById('vol');
 const cur = document.getElementById('cur');
 const dur = document.getElementById('dur');
 const playBtn = document.getElementById('play');
+const prevBtn = document.getElementById('prev');
+const rewBtn = document.getElementById('rew');
+const fwdBtn = document.getElementById('fwd');
+const nextBtn = document.getElementById('next');
 const muteBtn = document.getElementById('mute');
 const pipBtn = document.getElementById('pip');
 let ep = '', last = 0, brightness = 1, hudTimer = 0, hideTimer = 0, seeking = false;
-let hold = false, dblInterval = 500;
+let hold = false, dblInterval = 500, chromeOn = false;
+const hideAfter = 2000;
 function send(type, extra) {
   fetch('event?type=' + type + '&ep=' + encodeURIComponent(ep) + (extra || '')).catch(() => {});
 }
@@ -422,11 +449,20 @@ function syncPlay() {
   document.body.classList.toggle('playing', !v.paused);
   playBtn.setAttribute('aria-label', v.paused ? '播放' : '暂停');
 }
-function showControls() {
-  document.body.classList.add('controls');
-  clearTimeout(hideTimer);
-  if (!v.paused) hideTimer = setTimeout(() => document.body.classList.remove('controls'), 2600);
+function setChrome(on) {
+  if (on === chromeOn) return;
+  chromeOn = on;
+  document.body.classList.toggle('controls', on);
+  // The player's top buttons are native, so tell Go to hide and show them
+  // with this bar.
+  send('chrome', on ? '&on=1' : '&on=0');
 }
+function showControls() {
+  setChrome(true);
+  clearTimeout(hideTimer);
+  if (!v.paused) hideTimer = setTimeout(() => setChrome(false), hideAfter);
+}
+function hideControls() { setChrome(false) }
 function showHud(text) {
   hud.textContent = text;
   hud.classList.add('show');
@@ -473,6 +509,14 @@ window.addEventListener('wheel', e => {
   }
 }, {passive: false});
 playBtn.addEventListener('click', () => kx.toggle());
+prevBtn.addEventListener('click', () => { send('prev'); showHud('上一集') });
+nextBtn.addEventListener('click', () => { send('next'); showHud('下一集') });
+function skip(d) {
+  kx.seek(d);
+  showHud(d < 0 ? '快退 ' + Math.abs(d) + ' 秒' : '快进 ' + d + ' 秒');
+}
+rewBtn.addEventListener('click', () => skip(-10));
+fwdBtn.addEventListener('click', () => skip(10));
 muteBtn.addEventListener('click', () => {
   if (v.volume === 0) { v.volume = 1; v.muted = false } else { v.muted = !v.muted }
   syncVolume();
@@ -532,13 +576,13 @@ v.addEventListener('pause', () => { syncPlay(); showControls() });
 window.addEventListener('mousemove', e => {
   if (e.target && e.target.closest && e.target.closest('#bar')) {
     clearTimeout(hideTimer);
-    document.body.classList.add('controls');
+    setChrome(true);
     return;
   }
   showControls();
 });
-bar.addEventListener('mouseenter', () => { clearTimeout(hideTimer); document.body.classList.add('controls') });
-bar.addEventListener('mouseleave', () => { clearTimeout(hideTimer); if (!v.paused) hideTimer = setTimeout(() => document.body.classList.remove('controls'), 1800) });
+bar.addEventListener('mouseenter', () => { clearTimeout(hideTimer); setChrome(true) });
+bar.addEventListener('mouseleave', () => { clearTimeout(hideTimer); if (!v.paused) hideTimer = setTimeout(hideControls, hideAfter) });
 v.addEventListener('ended', () => send('ended'));
 v.addEventListener('playing', () => send('playing'));
 v.addEventListener('waiting', () => send('waiting'));

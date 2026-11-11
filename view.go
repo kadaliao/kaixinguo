@@ -68,6 +68,8 @@ func (a *app) view(c *ui.Context) {
 		a.panelReveal = false
 		a.panelPinned = false
 		a.playerSet = false
+		a.playerChrome = true
+		a.playerTopHovered = false
 		a.theaterShown = false
 		if a.fullscreen && a.theaterFullscreen {
 			a.setFullScreen(false) // only the full screen the theater entered

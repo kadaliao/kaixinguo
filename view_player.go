@@ -64,8 +64,17 @@ func (a *app) playerView(c *ui.Context, id string) {
 					edgeHovered = a.episodesEdge(c)
 				}
 				ui.Box(c).Absolute().Top(0).Left(0).Right(0).Height(titleBarHeight).DragWindow()
-				a.exitButton(c)
-				a.playerToolbar(c, theater)
+				// In the theater the top buttons keep the bottom bar company:
+				// both hide while the picture plays and come back on a move.
+				// The page cannot see the pointer over them, so they also
+				// stay while it rests there.
+				hovered := false
+				if !theater || a.playerChrome || a.playerTopHovered {
+					exit := a.exitButton(c)
+					tools := a.playerToolbar(c, theater)
+					hovered = exit || tools
+				}
+				a.playerTopHovered = hovered
 			})
 			if !theater {
 				a.playerPanel(c, sp)
@@ -197,8 +206,8 @@ func (a *app) setFullScreen(v bool) {
 }
 
 // exitButton leaves the player from the video's top left, clear of the
-// window's traffic lights.
-func (a *app) exitButton(c *ui.Context) {
+// window's traffic lights. It reports whether the pointer is over it.
+func (a *app) exitButton(c *ui.Context) bool {
 	b := ui.ButtonBase(c.Key("exit")).Absolute().Top((titleBarHeight-30)/2).Left(titleBarLeft(c, 10)).
 		Size(30, 30).Radius(15).Center().Material(glass.Glass{Interactive: true}).
 		Label("退出播放").Tooltip("退出播放（Esc）").Cursor(ui.CursorPointer)
@@ -206,14 +215,17 @@ func (a *app) exitButton(c *ui.Context) {
 	if b.Clicked() {
 		a.leavePlayer()
 	}
+	return b.Hovered()
 }
 
 // playerToolbar holds the theater's controls: the episodes drawer and
 // the way in or out of full screen. It stays out of the window controls'
-// way, at the video's top right.
-func (a *app) playerToolbar(c *ui.Context, theater bool) {
-	ui.Row(c).Absolute().Top(10).Right(14).Gap(2).Padding(3).Radius(12).
-		Material(glass.Glass{}).Children(func() {
+// way, at the video's top right. It reports whether the pointer is over
+// it.
+func (a *app) playerToolbar(c *ui.Context, theater bool) bool {
+	bar := ui.Row(c).Absolute().Top(10).Right(14).Gap(2).Padding(3).Radius(12).
+		Material(glass.Glass{})
+	bar.Children(func() {
 		if theater {
 			if a.playerToolButton(c, "episodes", iconList, "选集", a.panelOpen) {
 				if a.panelOpen {
@@ -234,6 +246,7 @@ func (a *app) playerToolbar(c *ui.Context, theater bool) {
 			a.toggleTheater()
 		}
 	})
+	return bar.Hovered()
 }
 
 // playerToolButton is a control of the player's toolbar; on lights it as
