@@ -366,6 +366,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
 #bar:hover input[type=range]::-webkit-slider-thumb{opacity:1}
 #seek{flex:0 1 320px;width:320px;min-width:50px}
 #vol{width:72px;flex:none}
+#ratebox{position:relative;display:flex;flex:none}
+#bar #rate{width:auto;min-width:46px;padding:0 6px;
+  font:600 11px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-variant-numeric:tabular-nums}
+#rates{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);flex-direction:column;gap:2px;
+  min-width:72px;padding:6px;border-radius:12px;background:rgba(24,24,26,.92);
+  -webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);box-shadow:0 10px 34px rgba(0,0,0,.38)}
+#rates[hidden]{display:none}
+#rates:not([hidden]){display:flex}
+#rates button{height:28px;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.9);
+  font:500 12px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-variant-numeric:tabular-nums;cursor:pointer}
+#rates button:hover,#rates button.on{background:rgba(255,255,255,.14)}
 </style></head>
 <body><video id="v" playsinline preload="auto"></video>
 <div id="bar" role="group" aria-label="播放控制">
@@ -395,6 +406,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
       <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path class="wave" d="M16 9.2a4 4 0 0 1 0 5.6M18.6 6.8a7.5 7.5 0 0 1 0 10.4"/></svg>
     </button>
     <input id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="音量">
+    <div id="ratebox">
+      <button id="rate" class="ctl" aria-label="播放速度 1.0×">1.0×</button>
+      <div id="rates" role="menu" aria-label="播放速度" hidden>
+        <button type="button" data-rate="0.5">0.5×</button>
+        <button type="button" data-rate="0.75">0.75×</button>
+        <button type="button" data-rate="1" class="on">1.0×</button>
+        <button type="button" data-rate="1.25">1.25×</button>
+        <button type="button" data-rate="1.5">1.5×</button>
+        <button type="button" data-rate="2">2.0×</button>
+      </div>
+    </div>
     <button id="pip" class="ctl" aria-label="小窗播放">
       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><rect x="12" y="12" width="7.5" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></svg>
     </button>
@@ -416,7 +438,11 @@ const fwdBtn = document.getElementById('fwd');
 const nextBtn = document.getElementById('next');
 const muteBtn = document.getElementById('mute');
 const pipBtn = document.getElementById('pip');
+const rateBtn = document.getElementById('rate');
+const rateMenu = document.getElementById('rates');
+const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
 let ep = '', last = 0, brightness = 1, hudTimer = 0, hideTimer = 0, seeking = false;
+let rate = 1;
 let hold = false, dblInterval = 500, chromeOn = false;
 const hideAfter = 2000;
 function send(type, extra) {
@@ -460,9 +486,28 @@ function setChrome(on) {
 function showControls() {
   setChrome(true);
   clearTimeout(hideTimer);
-  if (!v.paused) hideTimer = setTimeout(() => setChrome(false), hideAfter);
+  if (!v.paused && rateMenu.hidden) hideTimer = setTimeout(hideControls, hideAfter);
 }
-function hideControls() { setChrome(false) }
+function hideControls() {
+  rateMenu.hidden = true;
+  setChrome(false);
+}
+function rateLabel(r) { return r.toFixed(2).replace(/0$/, '') + '\u00d7' }
+function applyRate() {
+  v.defaultPlaybackRate = rate;
+  v.playbackRate = rate;
+  rateBtn.textContent = rateLabel(rate);
+  rateBtn.setAttribute('aria-label', '播放速度 ' + rateLabel(rate));
+  for (const b of rateMenu.children) b.classList.toggle('on', +b.dataset.rate === rate);
+}
+function setRate(r) {
+  if (speeds.indexOf(r) < 0) return;
+  rate = r;
+  applyRate();
+  rateMenu.hidden = true;
+  showHud('速度 ' + rateLabel(rate));
+  showControls();
+}
 function showHud(text) {
   hud.textContent = text;
   hud.classList.add('show');
@@ -473,6 +518,7 @@ window.kx = {
   play(src, id, start) {
     ep = id; last = 0; seeking = false;
     v.src = src;
+    applyRate(); // a new src can clear the element's rate
     if (start > 0) v.addEventListener('loadedmetadata', () => { v.currentTime = start }, {once: true});
     if (!hold) v.play().catch(e => { if (e.name !== 'AbortError') send('error', '&msg=' + encodeURIComponent(e.message)) });
   },
@@ -487,7 +533,18 @@ window.kx = {
     if (isFinite(ms) && ms >= 100 && ms <= 5000) dblInterval = ms;
   },
   toggle() { v.paused ? v.play() : v.pause() },
-  seek(d) { v.currentTime = Math.max(0, v.currentTime + d) },
+  seek(d) {
+    v.currentTime = Math.max(0, Math.min(v.duration || Infinity, v.currentTime + d));
+    showHud((d < 0 ? '快退 ' : '快进 ') + Math.abs(d) + ' 秒');
+    showControls();
+  },
+  nudgeRate(d) {
+    let i = speeds.indexOf(rate);
+    if (i < 0) i = speeds.indexOf(1);
+    const n = i + d;
+    if (n < 0 || n >= speeds.length) return;
+    setRate(speeds[n]);
+  },
 };
 // The right half of the video scrolls the volume, the left half its
 // brightness, by a mouse's wheel or a touchpad.
@@ -511,12 +568,8 @@ window.addEventListener('wheel', e => {
 playBtn.addEventListener('click', () => kx.toggle());
 prevBtn.addEventListener('click', () => { send('prev'); showHud('上一集') });
 nextBtn.addEventListener('click', () => { send('next'); showHud('下一集') });
-function skip(d) {
-  kx.seek(d);
-  showHud(d < 0 ? '快退 ' + Math.abs(d) + ' 秒' : '快进 ' + d + ' 秒');
-}
-rewBtn.addEventListener('click', () => skip(-10));
-fwdBtn.addEventListener('click', () => skip(10));
+rewBtn.addEventListener('click', () => kx.seek(-10));
+fwdBtn.addEventListener('click', () => kx.seek(10));
 muteBtn.addEventListener('click', () => {
   if (v.volume === 0) { v.volume = 1; v.muted = false } else { v.muted = !v.muted }
   syncVolume();
@@ -567,7 +620,7 @@ function endSeek(blur) {
 seek.addEventListener('pointerup', () => endSeek(true));
 seek.addEventListener('change', () => endSeek(false));
 document.addEventListener('pointerup', () => { if (seeking) endSeek(true) });
-v.addEventListener('loadedmetadata', syncTime);
+v.addEventListener('loadedmetadata', () => { applyRate(); syncTime() });
 v.addEventListener('durationchange', syncTime);
 v.addEventListener('timeupdate', syncTime);
 v.addEventListener('volumechange', syncVolume);
@@ -583,6 +636,19 @@ window.addEventListener('mousemove', e => {
 });
 bar.addEventListener('mouseenter', () => { clearTimeout(hideTimer); setChrome(true) });
 bar.addEventListener('mouseleave', () => { clearTimeout(hideTimer); if (!v.paused) hideTimer = setTimeout(hideControls, hideAfter) });
+rateBtn.addEventListener('click', () => {
+  rateMenu.hidden = !rateMenu.hidden;
+  if (!rateMenu.hidden) { clearTimeout(hideTimer); setChrome(true) }
+});
+rateMenu.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b) setRate(+b.dataset.rate);
+});
+document.addEventListener('pointerdown', e => {
+  if (rateMenu.hidden) return;
+  if (e.target.closest('#rates') || e.target.closest('#rate')) return;
+  rateMenu.hidden = true;
+});
 v.addEventListener('ended', () => send('ended'));
 v.addEventListener('playing', () => send('playing'));
 v.addEventListener('waiting', () => send('waiting'));
@@ -599,8 +665,10 @@ v.addEventListener('pause', () => {
 document.addEventListener('keydown', e => {
   if (e.target && e.target.closest && e.target.closest('#bar')) return;
   if (e.key === ' ') { e.preventDefault(); kx.toggle() }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); kx.seek(-5) }
-  else if (e.key === 'ArrowRight') { e.preventDefault(); kx.seek(5) }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); kx.seek(e.shiftKey ? -30 : -5) }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); kx.seek(e.shiftKey ? 30 : 5) }
+  else if (e.key === '[') { e.preventDefault(); kx.nudgeRate(-1) }
+  else if (e.key === ']') { e.preventDefault(); kx.nudgeRate(1) }
   else if (e.key === 'ArrowDown') { e.preventDefault(); send('next') }
   else if (e.key === 'ArrowUp') { e.preventDefault(); send('prev') }
 });
