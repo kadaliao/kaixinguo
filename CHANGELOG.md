@@ -4,6 +4,12 @@
 
 ## [未发布]
 
+## [0.5.1] - 2026-11-11
+
+### 修复
+
+- 红果服务端在 11 月 10 日前后收紧了播放接口的校验，导致所有剧集都打不开（一直缓冲或提示失败）。更新匿名播放请求的签名后已恢复。
+
 ## [0.5.0] - 2026-11-11
 
 ### 新增
@@ -77,7 +83,8 @@
 - 暂不支持分段（DASH/HLS）的长视频
 - 第一次启动要注册匿名设备，网络慢时列表可能要等十几秒才出来；之后启动会先显示缓存
 
-[未发布]: https://github.com/kadaliao/kaixinguo/compare/v0.5.0...HEAD
+[未发布]: https://github.com/kadaliao/kaixinguo/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/kadaliao/kaixinguo/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/kadaliao/kaixinguo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/kadaliao/kaixinguo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/kadaliao/kaixinguo/compare/v0.2.0...v0.3.0

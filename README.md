@@ -44,7 +44,13 @@
 
 ## 下载安装
 
-从 [Releases](https://github.com/kadaliao/kaixinguo/releases/latest) 下载 `kai-xin-guo-<版本>.dmg`，打开后把「开心果」拖进「应用程序」。
+用 [Homebrew](https://brew.sh) 一行装好：
+
+```sh
+brew install --cask kadaliao/tap/kaixinguo
+```
+
+或者从 [Releases](https://github.com/kadaliao/kaixinguo/releases/latest) 下载 `kai-xin-guo-<版本>.dmg`，打开后把「开心果」拖进「应用程序」。
 
 - 一个安装包同时支持 Apple 芯片和 Intel，需要 macOS 12 或更高版本
 - 用 Developer ID 签名并通过了苹果公证，双击即可打开

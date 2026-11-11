@@ -16,3 +16,5 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )
+
+replace github.com/beilunyang/openhongguo => github.com/kadaliao/openhongguo v0.2.1-0.20261111072828-bed14595d35b
