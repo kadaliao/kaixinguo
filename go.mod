@@ -5,7 +5,7 @@ go 1.27.3
 tool github.com/egoist/mygo/cmd/mygo
 
 require (
-	github.com/beilunyang/openhongguo v0.2.0
+	github.com/beilunyang/openhongguo v0.3.0
 	github.com/ebitengine/purego v0.11.3
 	github.com/egoist/mygo v0.7.4
 )
@@ -16,5 +16,3 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )
-
-replace github.com/beilunyang/openhongguo => github.com/kadaliao/openhongguo v0.2.1-0.20261111072828-bed14595d35b
