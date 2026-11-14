@@ -377,8 +377,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
 #rates button{height:28px;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.9);
   font:500 12px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-variant-numeric:tabular-nums;cursor:pointer}
 #rates button:hover,#rates button.on{background:rgba(255,255,255,.14)}
+#dm{position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;z-index:1}
+#dm .d,#dmruler{position:absolute;left:0;top:0;white-space:pre;color:#fff;opacity:.86;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-weight:500;line-height:1.3;
+  text-shadow:0 0 1px rgba(0,0,0,.85),0 1px 2px rgba(0,0,0,.6);will-change:transform}
+#dmruler{visibility:hidden}
+body.dmoff #dm,body.pip #dm{display:none}
+#bar #dmbtn svg text{font:600 10px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;fill:currentColor;stroke:none}
+#dmbtn .slash{display:none}
+body.dmoff #dmbtn{color:rgba(255,255,255,.5)}
+body.dmoff #dmbtn .slash{display:block}
 </style></head>
 <body><video id="v" playsinline preload="auto"></video>
+<div id="dm" aria-hidden="true"><span id="dmruler"></span></div>
 <div id="bar" role="group" aria-label="播放控制">
   <div id="transport" role="group" aria-label="播放与换集">
     <button id="prev" class="ctl" aria-label="上一集" title="上一集">
@@ -417,6 +428,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
         <button type="button" data-rate="2">2.0×</button>
       </div>
     </div>
+    <button id="dmbtn" class="ctl" aria-label="关闭弹幕" title="弹幕（D）">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="4"/><text x="12" y="15.6" text-anchor="middle">弹</text><path class="slash" d="M5 19.5 19 4.5"/></svg>
+    </button>
     <button id="pip" class="ctl" aria-label="小窗播放">
       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><rect x="12" y="12" width="7.5" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></svg>
     </button>
@@ -514,15 +528,139 @@ function showHud(text) {
   clearTimeout(hudTimer);
   hudTimer = setTimeout(() => hud.classList.remove('show'), 900);
 }
+// 弹幕 fly from the picture's right edge to its left, over its upper part,
+// in lanes where no line catches up with the one ahead. Their clock is
+// the video's: they pause, speed up and jump with it.
+const dmLayer = document.getElementById('dm');
+const dmRuler = document.getElementById('dmruler');
+const dmBtn = document.getElementById('dmbtn');
+const dmLate = 1500; // ms a line may come late and still fly
+const dmWait = 2500; // ms a line waits for a free lane
+const dmGap = 28; // px between two lines of a lane
+let dmOn = true, dmLines = [], dmNext = 0, dmQueue = [], dmLanes = [], dmFly = new Set(), dmTimer = 0;
+let dmBox = null;
+function dmLayout() {
+  const W = window.innerWidth, H = window.innerHeight;
+  if (!W || !H) return;
+  const ar = v.videoWidth > 0 && v.videoHeight > 0 ? v.videoWidth / v.videoHeight : 9 / 16;
+  let w = W, h = H;
+  if (W / H > ar) w = Math.round(H * ar); else h = Math.round(W / ar);
+  const left = Math.round((W - w) / 2), top = Math.round((H - h) / 2);
+  Object.assign(dmLayer.style, {left: left + 'px', top: top + 'px', width: w + 'px', height: h + 'px'});
+  const fs = clamp(Math.round(h * 0.024), 13, 22), lh = Math.round(fs * 1.6);
+  const lanes = clamp(Math.floor(h * 0.3 / lh), 3, 6);
+  // Clear of the window's title bar, where the exit and toolbar sit.
+  dmBox = {w, fs, lh, top: Math.max(48 - top, Math.round(h * 0.06)), dur: clamp(w * 13, 5500, 10000)};
+  while (dmLanes.length < lanes) dmLanes.push({clear: -Infinity, exit: -Infinity});
+  dmLanes.length = lanes;
+}
+function dmIndex(t) {
+  let lo = 0, hi = dmLines.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (dmLines[m].t < t) lo = m + 1; else hi = m }
+  return lo;
+}
+function dmClear() {
+  for (const f of dmFly) { f.anim.cancel(); f.el.remove() }
+  dmFly.clear();
+  dmQueue = [];
+  for (const l of dmLanes) { l.clear = -Infinity; l.exit = -Infinity }
+}
+// dmSeek starts over from the playhead: what is flying goes, and lines
+// after it fly again.
+function dmSeek() {
+  dmClear();
+  for (const l of dmLines) l.shown = false;
+  dmNext = dmIndex(v.currentTime * 1000);
+}
+function dmReset() { dmClear(); dmLines = []; dmNext = 0 }
+// The lines are let go on a timer rather than on frames, which the page
+// stops drawing when the system deems it hidden; the flight itself is an
+// animation.
+function dmRun() {
+  if (!dmTimer && dmShown() && !v.paused && dmLines.length) dmTimer = setInterval(dmTick, 100);
+}
+// dmShown reports whether 弹幕 can fly: on, and the picture in the page
+// rather than in the small window.
+function dmShown() { return dmOn && !document.body.classList.contains('pip') }
+function dmTick() {
+  if (!dmShown() || v.paused || !v.src) { clearInterval(dmTimer); dmTimer = 0; return }
+  const t = v.currentTime * 1000;
+  while (dmNext < dmLines.length && dmLines[dmNext].t <= t) {
+    const l = dmLines[dmNext++];
+    if (!l.shown && t - l.t <= dmLate) { l.shown = true; dmQueue.push(l) }
+  }
+  if (dmQueue.length) dmQueue = dmQueue.filter(l => t - l.t <= dmWait && !dmLaunch(l, t));
+}
+// dmLaunch flies l from now, t, if a lane has room, and reports whether
+// it did.
+function dmLaunch(l, t) {
+  if (!dmBox) dmLayout();
+  if (!dmBox) return false;
+  const W = dmBox.w, D = dmBox.dur;
+  if (l.fs !== dmBox.fs) {
+    dmRuler.style.fontSize = dmBox.fs + 'px';
+    dmRuler.textContent = l.s;
+    l.w = dmRuler.offsetWidth; l.fs = dmBox.fs;
+  }
+  const speed = (W + l.w) / D; // px per ms of play
+  let lane = -1;
+  for (let i = 0; i < dmLanes.length; i++) {
+    const n = dmLanes[i];
+    // The lane's last line is all in, and this one, faster for being
+    // longer, reaches the left edge only after it has gone.
+    if (t >= n.clear && t + W / speed >= n.exit) { lane = i; break }
+  }
+  if (lane < 0) return false;
+  dmLanes[lane].clear = t + (l.w + dmGap) / speed;
+  dmLanes[lane].exit = t + D;
+  const el = document.createElement('div');
+  el.className = 'd';
+  el.textContent = l.s;
+  el.style.fontSize = dmBox.fs + 'px';
+  el.style.top = (dmBox.top + lane * dmBox.lh) + 'px';
+  dmLayer.appendChild(el);
+  const anim = el.animate([{transform: 'translateX(' + W + 'px)'}, {transform: 'translateX(' + (-l.w) + 'px)'}],
+    {duration: D, easing: 'linear'});
+  anim.playbackRate = v.playbackRate;
+  const f = {el, anim};
+  dmFly.add(f);
+  anim.onfinish = () => { el.remove(); dmFly.delete(f) };
+  return true;
+}
+function dmPause() { for (const f of dmFly) f.anim.pause() }
+function dmPlay() {
+  for (const f of dmFly) { f.anim.playbackRate = v.playbackRate; f.anim.play() }
+  dmRun();
+}
 window.kx = {
   play(src, id, start) {
     ep = id; last = 0; seeking = false;
+    dmReset();
     v.src = src;
     applyRate(); // a new src can clear the element's rate
     if (start > 0) v.addEventListener('loadedmetadata', () => { v.currentTime = start }, {once: true});
     if (!hold) v.play().catch(e => { if (e.name !== 'AbortError') send('error', '&msg=' + encodeURIComponent(e.message)) });
   },
-  stop() { v.pause(); v.removeAttribute('src'); v.load(); },
+  stop() { v.pause(); v.removeAttribute('src'); v.load(); dmReset() },
+  // danmaku takes lines of episode id, each [ms, text]; they may come in
+  // any order and while the episode plays.
+  danmaku(id, lines) {
+    if (id !== ep || !lines || !lines.length) return;
+    dmLines = dmLines.concat(lines.map(l => ({t: l[0], s: l[1], w: 0, fs: 0, shown: false})));
+    dmLines.sort((a, b) => a.t - b.t);
+    // Lines that just came due still fly.
+    dmNext = dmIndex(v.currentTime * 1000 - dmLate);
+    dmRun();
+  },
+  setDanmaku(on, quiet) {
+    on = !!on;
+    if (on === dmOn) return;
+    dmOn = on;
+    document.body.classList.toggle('dmoff', !on);
+    dmBtn.setAttribute('aria-label', on ? '关闭弹幕' : '打开弹幕');
+    if (on) { dmSeek(); dmRun() } else dmClear();
+    if (!quiet) { showHud(on ? '弹幕已开启' : '弹幕已关闭'); showControls() }
+  },
   pause() { v.pause() },
   setHold(on) {
     hold = !!on;
@@ -649,6 +787,31 @@ document.addEventListener('pointerdown', e => {
   if (e.target.closest('#rates') || e.target.closest('#rate')) return;
   rateMenu.hidden = true;
 });
+v.addEventListener('loadedmetadata', dmLayout);
+window.addEventListener('resize', dmLayout);
+v.addEventListener('playing', dmPlay);
+v.addEventListener('pause', dmPause);
+v.addEventListener('waiting', dmPause);
+v.addEventListener('seeking', dmSeek);
+// Tell the app where a seek landed now, not at the next progress, so
+// the 弹幕 there are read.
+v.addEventListener('seeked', () => { last = 0 });
+v.addEventListener('ratechange', () => { for (const f of dmFly) f.anim.playbackRate = v.playbackRate });
+// The small window shows only the picture; the 弹幕 wait for it to come
+// back.
+function dmPip(on) {
+  if (on === document.body.classList.contains('pip')) return;
+  document.body.classList.toggle('pip', on);
+  if (on) dmClear(); else { dmSeek(); dmRun() }
+}
+v.addEventListener('enterpictureinpicture', () => dmPip(true));
+v.addEventListener('leavepictureinpicture', () => dmPip(false));
+v.addEventListener('webkitpresentationmodechanged', () => dmPip(v.webkitPresentationMode === 'picture-in-picture'));
+dmBtn.addEventListener('click', () => {
+  const on = !dmOn;
+  kx.setDanmaku(on);
+  send('danmaku', '&on=' + (on ? 1 : 0));
+});
 v.addEventListener('ended', () => send('ended'));
 v.addEventListener('playing', () => send('playing'));
 v.addEventListener('waiting', () => send('waiting'));
@@ -669,6 +832,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'ArrowRight') { e.preventDefault(); kx.seek(e.shiftKey ? 30 : 5) }
   else if (e.key === '[') { e.preventDefault(); kx.nudgeRate(-1) }
   else if (e.key === ']') { e.preventDefault(); kx.nudgeRate(1) }
+  else if ((e.key === 'd' || e.key === 'D') && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); dmBtn.click() }
   else if (e.key === 'ArrowDown') { e.preventDefault(); send('next') }
   else if (e.key === 'ArrowUp') { e.preventDefault(); send('prev') }
 });

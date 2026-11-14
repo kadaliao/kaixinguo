@@ -24,6 +24,11 @@ type playback struct {
 	state    playState
 	msg      string
 	pending  bool // waits for the series to load
+
+	epID   string // the episode, once its series has loaded
+	at     int64  // the playhead, in ms, as the page last told it
+	onPage bool   // the page was told to play it
+	dmSent int    // how many of its 弹幕 lines the page has
 }
 
 type playState int
@@ -124,7 +129,9 @@ func (a *app) startEpisode(sp *seriesPage) {
 		return
 	}
 	p.state, p.msg = playResolving, ""
+	p.epID, p.at = ep.ID, int64(p.start*1000)
 	a.recordWatch(sp, p.number, p.start, 0, false)
+	a.feedDanmaku() // as the episode resolves
 	gen, start := p.gen, p.start
 	f := a.resolve(ep)
 	go func() {
@@ -141,6 +148,8 @@ func (a *app) startEpisode(sp *seriesPage) {
 			}
 			a.cur.state = playBuffering
 			a.evalJS(fmt.Sprintf("kx.play(%q,%q,%s)", src, ep.ID, strconv.FormatFloat(start, 'f', 1, 64)))
+			a.cur.onPage = true
+			a.flushDanmaku()
 		})
 	}()
 }
@@ -218,6 +227,9 @@ func (a *app) onPlayerEvent(q url.Values) {
 	case "chrome":
 		a.playerChrome = q.Get("on") != "0"
 		return
+	case "danmaku":
+		a.setDanmaku(q.Get("on") != "0")
+		return
 	case "next":
 		a.step(1)
 		return
@@ -246,6 +258,8 @@ func (a *app) onPlayerEvent(q url.Values) {
 		t, _ := strconv.ParseFloat(q.Get("t"), 64)
 		d, _ := strconv.ParseFloat(q.Get("d"), 64)
 		a.recordWatch(sp, p.number, t, d, false)
+		p.at = int64(t * 1000)
+		a.feedDanmaku()
 	case "ended":
 		a.recordWatch(sp, p.number, 0, 0, true)
 		// On to the next episode, or the next season's first.
@@ -343,6 +357,7 @@ func (a *app) ensureWebView() {
 	}
 	a.web = web
 	a.js = make(chan string, 16)
+	a.evalJS(fmt.Sprintf("kx.setDanmaku(%t,true)", a.danmakuOn))
 	go func(page *mygo.Page, q <-chan string) {
 		for js := range q {
 			_, _ = page.Eval(js) // one at a time, in order
