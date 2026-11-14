@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/url"
 	"path/filepath"
@@ -89,6 +90,13 @@ type app struct {
 	newVersion   string
 	checkUpdates func()
 
+	// 弹幕: whether they show, the episodes' lines read so far, and how
+	// to read more (the client's ListDanmaku; tests swap it).
+	danmakuOn   bool
+	tracks      map[string]*danmakuTrack
+	trackOrder  []string
+	listDanmaku func(ctx context.Context, seriesID, episodeID string, opts sdk.DanmakuOptions) (*model.DanmakuPage, error)
+
 	// The player's web view.
 	web       *mygo.WebView
 	webReady  bool
@@ -116,6 +124,8 @@ func newApp(dataDir, cacheDir string) *app {
 		feeds:        map[string]*feed{},
 		series:       map[string]*seriesPage{},
 		futures:      map[string]*future{},
+		tracks:       map[string]*danmakuTrack{},
+		danmakuOn:    danmakuOn(dataDir),
 		hist:         loadHistory(dataDir),
 		favs:         loadFavorites(dataDir),
 		playerChrome: true,
@@ -152,6 +162,7 @@ func main() {
 	if a.client, err = newClient(dataDir); err != nil {
 		log.Fatal(err)
 	}
+	a.listDanmaku = a.client.ListDanmaku
 	if a.proxy, err = newProxy(func(q url.Values) { a.update(func() { a.onPlayerEvent(q) }) }); err != nil {
 		log.Fatal(err)
 	}
