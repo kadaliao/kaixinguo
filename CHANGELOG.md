@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.6.0] - 2026-11-14
+
 ### 新增
 
 - 弹幕：播放时，其他观众留下的弹幕从画面上方飞过，跟着视频暂停、倍速和跳转；同一句话的「+1」20 秒内只出现一次，表情代码显示成 emoji。点底部播放栏的「弹」或按 D 打开、关闭，下次打开仍然记得。
@@ -87,7 +89,8 @@
 - 暂不支持分段（DASH/HLS）的长视频
 - 第一次启动要注册匿名设备，网络慢时列表可能要等十几秒才出来；之后启动会先显示缓存
 
-[未发布]: https://github.com/kadaliao/kaixinguo/compare/v0.5.1...HEAD
+[未发布]: https://github.com/kadaliao/kaixinguo/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/kadaliao/kaixinguo/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/kadaliao/kaixinguo/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/kadaliao/kaixinguo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/kadaliao/kaixinguo/compare/v0.3.0...v0.4.0
