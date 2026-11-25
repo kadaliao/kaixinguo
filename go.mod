@@ -7,7 +7,7 @@ tool github.com/egoist/mygo/cmd/mygo
 require (
 	github.com/beilunyang/openhongguo v0.4.1
 	github.com/ebitengine/purego v0.11.3
-	github.com/egoist/mygo v0.9.0
+	github.com/egoist/mygo v0.10.0
 )
 
 require (
