@@ -333,7 +333,7 @@ const playerHTML = `<!doctype html>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;-webkit-user-select:none;cursor:default}
 video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;outline:none}
 #hud{position:fixed;top:64px;left:50%;transform:translateX(-50%);padding:7px 14px;border-radius:9px;
-  background:rgba(18,18,20,.78);color:#fff;font:500 12px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+  background:rgba(18,18,20,.78);color:#fff;font:500 12px/1 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI",sans-serif;
   letter-spacing:.02em;opacity:0;transition:opacity .16s ease;pointer-events:none;z-index:3;white-space:nowrap}
 #hud.show{opacity:1}
 #bar{position:fixed;left:50%;bottom:12px;width:min(680px,calc(100% - 24px));box-sizing:border-box;display:flex;flex-direction:column;gap:4px;
@@ -354,7 +354,7 @@ body:not(.controls){cursor:none}
 #bar .ctl:active{background:rgba(255,255,255,.2)}
 #bar .ctl svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 #bar .time{min-width:32px;flex:none;text-align:center;color:rgba(255,255,255,.72);
-  font:500 11px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-variant-numeric:tabular-nums}
+  font:500 11px/1 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI",sans-serif;font-variant-numeric:tabular-nums}
 #play .pause{display:none}
 body.playing #play .play{display:none}
 body.playing #play .pause{display:block}
@@ -368,22 +368,22 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
 #vol{width:72px;flex:none}
 #ratebox{position:relative;display:flex;flex:none}
 #bar #rate{width:auto;min-width:46px;padding:0 6px;
-  font:600 11px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-variant-numeric:tabular-nums}
+  font:600 11px/1 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI",sans-serif;font-variant-numeric:tabular-nums}
 #rates{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);flex-direction:column;gap:2px;
   min-width:72px;padding:6px;border-radius:12px;background:rgba(24,24,26,.92);
   -webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);box-shadow:0 10px 34px rgba(0,0,0,.38)}
 #rates[hidden]{display:none}
 #rates:not([hidden]){display:flex}
 #rates button{height:28px;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.9);
-  font:500 12px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-variant-numeric:tabular-nums;cursor:pointer}
+  font:500 12px/1 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI",sans-serif;font-variant-numeric:tabular-nums;cursor:pointer}
 #rates button:hover,#rates button.on{background:rgba(255,255,255,.14)}
 #dm{position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;z-index:1}
 #dm .d,#dmruler{position:absolute;left:0;top:0;white-space:pre;color:#fff;opacity:.86;
-  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-weight:500;line-height:1.3;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI",sans-serif;font-weight:500;line-height:1.3;
   text-shadow:0 0 1px rgba(0,0,0,.85),0 1px 2px rgba(0,0,0,.6);will-change:transform}
 #dmruler{visibility:hidden}
 body.dmoff #dm,body.pip #dm{display:none}
-#bar #dmbtn svg text{font:600 10px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;fill:currentColor;stroke:none}
+#bar #dmbtn svg text{font:600 10px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI",sans-serif;fill:currentColor;stroke:none}
 #dmbtn .slash{display:none}
 body.dmoff #dmbtn{color:rgba(255,255,255,.5)}
 body.dmoff #dmbtn .slash{display:block}
@@ -815,7 +815,10 @@ dmBtn.addEventListener('click', () => {
 v.addEventListener('ended', () => send('ended'));
 v.addEventListener('playing', () => send('playing'));
 v.addEventListener('waiting', () => send('waiting'));
-v.addEventListener('error', () => send('error', '&msg=' + (v.error ? v.error.code : '')));
+// A web view without an HEVC decoder, as WebView2 on a Windows without the
+// HEVC Video Extensions, says so, which names the likely cause.
+v.addEventListener('error', () => send('error', '&msg=' + (v.error ? v.error.code : '') +
+  (v.canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"') ? '' : '&hevc=0')));
 v.addEventListener('timeupdate', () => {
   const now = Date.now();
   if (now - last < 3000) return;
