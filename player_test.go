@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/beilunyang/openhongguo/sdk/model"
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -354,6 +355,56 @@ func TestTheaterEpisodesWithFailedEpisode(t *testing.T) {
 	tt.Advance(time.Second)
 	if !a.panelOpen {
 		t.Fatal("the episodes button did not open the drawer")
+	}
+}
+
+// Without a web view to play in, as on a Windows without the WebView2
+// Runtime, the player says so rather than load for ever, and 重试 tries to
+// make one again.
+func TestPlayerWithoutWebView(t *testing.T) {
+	a := testApp(t)
+	a.proxy = &proxy{} // only asked for the player page's address
+	tries := 0
+	a.newWebView = func(mygo.WebViewOptions) (*mygo.WebView, error) {
+		tries++
+		return nil, errNoWebView
+	}
+	a.router.Push("/series/1")
+	tt := ui.NewTester(a.view, 1180, 760)
+	tt.Advance(time.Second)
+	click(t, tt, "播放第 1 集")
+	want := "无法创建播放器：" + errNoWebView.Error()
+	if a.router.Path() != "/play/1" || a.cur.state != playFailed || !tt.HasText(want) {
+		t.Fatalf("at %s, state %v: %q", a.router.Path(), a.cur.state, tt.Texts())
+	}
+	if _, watched := a.hist.get("1"); watched {
+		t.Fatal("an episode that never played is in the history")
+	}
+	click(t, tt, "重试")
+	if tries != 2 || !tt.HasText(want) {
+		t.Fatalf("%d tries: %q", tries, tt.Texts())
+	}
+}
+
+// A video the web view cannot decode, as HEVC in a WebView2 without the
+// HEVC Video Extensions, names the extension; other failures keep the
+// plain message.
+func TestPlayerNamesMissingHEVC(t *testing.T) {
+	if !strings.Contains(playerHTML, `canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"')`) ||
+		!strings.Contains(playerHTML, "'&hevc=0'") {
+		t.Fatal("the player page does not tell whether it decodes HEVC")
+	}
+	a, tt := playerApp(t)
+	a.onPlayerEvent(url.Values{"type": {"error"}, "ep": {"e1"}, "msg": {"4"}, "hevc": {"0"}})
+	tt.Frame()
+	if a.cur.state != playFailed || !tt.HasText("「HEVC 视频扩展」") {
+		t.Fatalf("state %v: %q", a.cur.state, tt.Texts())
+	}
+	a.cur.state = playPlaying
+	a.onPlayerEvent(url.Values{"type": {"error"}, "ep": {"e1"}, "msg": {"2"}})
+	tt.Frame()
+	if !tt.HasText("视频加载失败，请重试") || tt.HasText("HEVC") {
+		t.Fatalf("a network failure reads %q", tt.Texts())
 	}
 }
 

@@ -72,7 +72,7 @@ type tutorialStep struct {
 var tutorialSteps = []tutorialStep{
 	{
 		title: "找剧",
-		body:  "推荐、排行榜和新剧都在侧栏，⌘F 随时搜索。",
+		body:  "推荐、排行榜和新剧都在侧栏，" + keys.cmd + "F 随时搜索。",
 	},
 	{
 		title: "收藏和续播",

@@ -34,6 +34,29 @@ func TestTutorial(t *testing.T) {
 	}
 }
 
+// The shortcuts the app names read as the system writes them: ui.Cmd is
+// Control on Windows, so search is Ctrl+F there and ⌘F on macOS.
+func TestKeyNames(t *testing.T) {
+	if k := keyNamesFor("windows"); k.cmd != "Ctrl+" || k.shift != "Shift+" {
+		t.Fatalf("Windows writes %+v", k)
+	}
+	if k := keyNamesFor("darwin"); k.cmd != "⌘" || k.shift != "⇧" {
+		t.Fatalf("macOS writes %+v", k)
+	}
+
+	a := testApp(t)
+	a.tutorialOn = true
+	tt := ui.NewTester(a.view, 1180, 760)
+	tt.Advance(time.Second)
+	if !tt.HasText(keys.cmd + "F 随时搜索") {
+		t.Fatalf("the tour names no %sF: %q", keys.cmd, tt.Texts())
+	}
+	_, tt = playerApp(t)
+	if !tt.HasText(keys.shift + "← " + keys.shift + "→ 30 秒") {
+		t.Fatalf("the player names no %s←: %q", keys.shift, tt.Texts())
+	}
+}
+
 // Skipping the tour closes it just as finishing does.
 func TestTutorialSkip(t *testing.T) {
 	a := testApp(t)

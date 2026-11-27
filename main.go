@@ -99,6 +99,10 @@ type app struct {
 	trackOrder  []string
 	listDanmaku func(ctx context.Context, seriesID, episodeID string, opts sdk.DanmakuOptions) (*model.DanmakuPage, error)
 
+	// How to make the player's web view: in the window, once there is one.
+	// Tests, which have no window, swap it.
+	newWebView func(mygo.WebViewOptions) (*mygo.WebView, error)
+
 	// The player's web view.
 	web       *mygo.WebView
 	webReady  bool
@@ -196,6 +200,7 @@ func main() {
 			Content:              ui.View(a.view),
 		})
 		a.fullscreen = a.win.IsFullScreen()
+		a.newWebView = a.makeWebView
 		close(a.ready)
 		a.watchUpdates()
 		// The theater follows the window: entering full screen with the

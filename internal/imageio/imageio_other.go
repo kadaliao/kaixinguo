@@ -1,7 +1,8 @@
-//go:build !darwin
+//go:build !darwin && !windows
 
 // Package imageio decodes the pictures Go's image packages can't, such as
-// HEIC covers, with macOS's ImageIO. Elsewhere it decodes none.
+// HEIC covers, with macOS's ImageIO or the Windows Imaging Component.
+// Elsewhere it decodes none.
 package imageio
 
 import (
@@ -9,7 +10,7 @@ import (
 	"image"
 )
 
-// Decode is not available outside macOS.
+// Decode is not available outside macOS and Windows.
 func Decode(data []byte, maxWidth int) (*image.RGBA, error) {
-	return nil, errors.New("imageio: only on macOS")
+	return nil, errors.New("imageio: only on macOS and Windows")
 }

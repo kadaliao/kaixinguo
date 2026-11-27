@@ -92,7 +92,9 @@ func (a *app) play(seriesID string, n int, start float64) {
 	default:
 		a.router.Push("/play/" + seriesID)
 	}
-	a.ensureWebView()
+	if a.ensureWebView(); a.cur.state == playFailed {
+		return // no player to play it in; 重试 tries to make one again
+	}
 	a.evalJS("kx.stop()")
 	if a.playerTutorialOn {
 		a.evalJS("kx.setHold(true)") // before the episode resolves and plays
@@ -268,6 +270,9 @@ func (a *app) onPlayerEvent(q url.Values) {
 		}
 	case "error":
 		p.state, p.msg = playFailed, "视频加载失败，请重试"
+		if q.Get("hevc") == "0" { // only where the web view has no HEVC: macOS always has it
+			p.msg = "这台电脑播放不了 HEVC 视频，可以在 Microsoft Store 装上「HEVC 视频扩展」后再试"
+		}
 		delete(a.futures, ep.ID)
 	}
 }
@@ -336,12 +341,24 @@ func (a *app) resumePoint(sp *seriesPage) (id string, n int, start float64, labe
 	return sp.id, w.Episode, max(0, w.Position-3), fmt.Sprintf("继续看第 %d 集", w.Episode)
 }
 
+// errNoWebView is a system without the web view the player shows in: a
+// Windows without the WebView2 Runtime.
+var errNoWebView = errors.New("这台电脑缺少 Microsoft Edge WebView2 运行时，安装后点「重试」")
+
+// makeWebView makes a web view in the window, if the system has them.
+func (a *app) makeWebView(opts mygo.WebViewOptions) (*mygo.WebView, error) {
+	if !mygo.WebViewAvailable() {
+		return nil, errNoWebView
+	}
+	return a.win.NewWebView(opts)
+}
+
 // ensureWebView makes the player's web view, once.
 func (a *app) ensureWebView() {
-	if a.web != nil || a.win == nil {
+	if a.web != nil || a.newWebView == nil {
 		return
 	}
-	web, err := a.win.NewWebView(mygo.WebViewOptions{
+	web, err := a.newWebView(mygo.WebViewOptions{
 		URL:             a.proxy.playerURL(),
 		BackgroundColor: "#000000",
 		Page: mygo.PageOptions{

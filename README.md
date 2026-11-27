@@ -128,6 +128,15 @@ go tool mygo build   # 打包：build/darwin-arm64/开心果.app 和 .dmg
 
 自己打包的应用是临时签名，只适合在本机运行。正式发版的流程见 [docs/releasing.md](docs/releasing.md)。
 
+### Windows（试验）
+
+Windows 版还在试验，没有安装包，也没有自动更新。在 Windows 10 或 11 上装好 Go，同样用 `go tool mygo dev` 运行，`go tool mygo build` 打包到 `build/windows-amd64/`。
+
+- 播放要用系统的 WebView2 运行时：Windows 11 自带，Windows 10 没有的话从[微软官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装
+- 封面是 HEIC、视频是 HEVC，要装 Microsoft Store 里的「HEIF 图像扩展」和「HEVC 视频扩展」；缺了扩展，封面只显示占位，视频会提示播放不了
+- 快捷键里的 ⌘ 换成 Ctrl，⇧ 换成 Shift；设置在按 Alt 弹出的「开心果」菜单里，也可以直接按 Ctrl+,
+- 观看记录和收藏在 `%AppData%\开心果\`，封面和推荐缓存在 `%LocalAppData%\开心果\`
+
 ## 参与开发
 
 欢迎 issue 和 PR。动手之前建议先读：
@@ -136,7 +145,7 @@ go tool mygo build   # 打包：build/darwin-arm64/开心果.app 和 .dmg
 - [docs/architecture.md](docs/architecture.md)：代码地图、线程模型、播放和缓存是怎么工作的
 - [CHANGELOG.md](CHANGELOG.md)：每个版本改了什么
 
-一句话概括实现：剧集是 CENC（AES-CTR）加密的 HEVC MP4，`internal/cenc` 按需原地解密任意字节区间，`proxy.go` 在 `127.0.0.1` 上边下载边解密，交给 WebView 里的 `<video>` 播放，可以随意拖动进度，不依赖 ffmpeg；封面是 HEIC，`internal/imageio` 通过 purego 调用 macOS 的 ImageIO 解码，不用 cgo。
+一句话概括实现：剧集是 CENC（AES-CTR）加密的 HEVC MP4，`internal/cenc` 按需原地解密任意字节区间，`proxy.go` 在 `127.0.0.1` 上边下载边解密，交给 WebView 里的 `<video>` 播放，可以随意拖动进度，不依赖 ffmpeg；封面是 HEIC，`internal/imageio` 通过 purego 调用 macOS 的 ImageIO 解码（Windows 上调用系统的 WIC），不用 cgo。
 
 ## 致谢
 

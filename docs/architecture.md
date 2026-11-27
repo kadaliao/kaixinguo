@@ -46,7 +46,7 @@ flowchart LR
 | `update.go` | 自动更新：MyGo 的更新窗口、「检查更新…」菜单、侧栏的新版本提示 |
 | `icons.go` | 侧栏和按钮用的 SVG 图标 |
 | `internal/cenc` | 把 CENC 加密的 MP4 按字节区间还原成明文 |
-| `internal/imageio` | 通过 purego 调 macOS ImageIO 解码 HEIC 等格式 |
+| `internal/imageio` | 解码 HEIC 等格式：macOS 上通过 purego 调 ImageIO，Windows 上通过 syscall 调 WIC |
 | `e2e.go` | 只在 `-tags e2e` 时编译，打开 MyGo 的自动化接口 |
 | `scripts/release.sh` | 签名、公证、附票据，见 [releasing.md](releasing.md) |
 
@@ -85,6 +85,8 @@ flowchart LR
 
 代理只监听 `127.0.0.1`，校验 `Host` 头，路径带随机前缀，别的进程猜不到地址。
 
+播放页在 Windows 上同样跑在系统 WebView（WebView2）里，代理和页面都不用改。WebView 在第一次播放时由 `ensureWebView` 通过 `app.newWebView` 创建，测试里没有窗口，就换成假的；系统没有 WebView2 运行时（`mygo.WebViewAvailable`）或创建失败时，这一集直接显示失败和原因，点「重试」再创建一次。
+
 ## 弹幕
 
 红果按播放时间分段下发一集的弹幕（2026-11 实测每段 30 秒），每台匿名设备拿到的是其中精选的一部分。开心果不一次读完整集，而是跟着播放进度读：
@@ -99,8 +101,11 @@ flowchart LR
 
 封面 CDN 只给 HEIC，Go 标准库解不了。`internal/imageio` 通过 [purego](https://github.com/ebitengine/purego) 直接调用 macOS 的 ImageIO（不用 cgo），解码并缩小到 400 像素宽（网格里海报的两倍，适配 Retina），再以 JPEG 存到 `Caches/开心果/covers/`。
 
+Windows 上走同一条路，只是解码换成 Windows 图像组件（WIC）：通过 `syscall` 调 COM 接口，在多线程套间里解码、用 Fant 插值缩小，再把 BGRA 换成 RGBA。WIC 读 HEIC 要靠系统的「HEIF 图像扩展」，它又要靠「HEVC 视频扩展」解码画面；缺了扩展就解不了，封面保持占位。
+
 - 缓存的键是去掉查询参数的 URL，因为签名参数每次都变。
 - 一分钟没出现在任何一帧里的封面会从内存释放，下次从磁盘的 JPEG 重新解码，只要几毫秒。
+- 下载或解码失败的封面一分钟内不再重试（`coverRetry`），否则解不了的封面每帧都会重新下载一次。
 
 ## 自动更新
 
@@ -151,4 +156,4 @@ go tool mygo vet .       # MyGo 的检查：元素的生命周期、goroutine �
 
 - 不支持分段（DASH/HLS）和音视频分离的流。
 - 需要登录才能看的集数不能播放，应用不提供登录。
-- 只支持 macOS：封面解码依赖 ImageIO，播放依赖系统 WebView。
+- 正式支持的只有 macOS。Windows 版是试验：没有安装包、签名和自动更新；封面要有 HEIF 图像扩展，播放要有 WebView2 运行时，而且 WebView2 要能解 HEVC，这取决于有没有装 HEVC 视频扩展和显卡能不能硬解，哪些机器能播还要在真机上确认。缺 WebView2 时播放页提示「无法创建播放器」；播放出错时，如果页面的 `canPlayType` 说解不了 HEVC，就提示去装扩展。

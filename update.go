@@ -1,6 +1,8 @@
 package main
 
 import (
+	"runtime"
+
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/plugins/updater/native"
@@ -36,9 +38,9 @@ func useUpdater(a *app) {
 					a.win.Update(a.openSettings)
 				}
 			}},
-			mygo.Separator(),
+			macOnly(mygo.Separator()),
 			{Role: mygo.RoleServices},
-			mygo.Separator(),
+			macOnly(mygo.Separator()),
 			{Role: mygo.RoleHide},
 			{Role: mygo.RoleHideOthers},
 			{Role: mygo.RoleUnhide},
@@ -50,6 +52,14 @@ func useUpdater(a *app) {
 		{Role: mygo.RoleViewMenu},
 		{Role: mygo.RoleWindowMenu},
 	}))
+}
+
+// macOnly hides an item outside macOS. MyGo hides the items of macOS's own
+// there, such as Services and Hide, but not the separators around them,
+// which would stack up in the menu Alt opens on Windows.
+func macOnly(it *mygo.MenuItem) *mygo.MenuItem {
+	it.Hidden = runtime.GOOS != "darwin"
+	return it
 }
 
 // watchUpdates keeps the version the last check found, which the sidebar

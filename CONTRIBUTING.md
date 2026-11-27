@@ -10,7 +10,7 @@
 
 ## 开发环境
 
-- macOS 12 或更高版本
+- macOS 12 或更高版本；Windows 10、11 也能开发，还在试验，要装的系统组件见 README 的「Windows（试验）」
 - Go，版本见 [go.mod](go.mod)
 - 第一次可以跑 `go tool mygo doctor` 检查环境
 
