@@ -7,6 +7,7 @@ import (
 	"errors"
 	"image/jpeg"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -27,6 +28,11 @@ const coverWidth = 400
 // its JPEG on disk does, which decodes again in a few milliseconds.
 const coverIdle = time.Minute
 
+// coverRetry is how long a cover that failed to load waits before a frame
+// tries it again. Without the wait a cover the system cannot decode, as
+// HEIC on a Windows without the HEIF extension, downloads on every frame.
+const coverRetry = time.Minute
+
 // covers downloads posters once, keeps them on disk as JPEG, and shows
 // them as bitmaps. Its maps belong to the main thread.
 type covers struct {
@@ -37,6 +43,7 @@ type covers struct {
 
 	loaded  map[string]*cover
 	pending map[string]bool
+	failed  map[string]time.Time // when a cover last failed to load
 	swept   time.Time
 }
 
@@ -55,6 +62,7 @@ func newCovers(dir string, update func(func())) *covers {
 		sem:     make(chan struct{}, 6),
 		loaded:  map[string]*cover{},
 		pending: map[string]bool{},
+		failed:  map[string]time.Time{},
 	}
 }
 
@@ -89,19 +97,25 @@ func (cs *covers) get(c *ui.Context, raw string) (*ui.Bitmap, float32) {
 		}
 		return cv.bmp, 1
 	}
-	if !cs.pending[k] {
+	if !cs.pending[k] && now.Sub(cs.failed[k]) >= coverRetry {
 		cs.pending[k] = true
 		go cs.load(k, raw)
 	}
 	return nil, 0
 }
 
-// sweep lets go of the covers no frame showed for a while.
+// sweep lets go of the covers no frame showed for a while, and of the
+// failures that no longer hold a cover back.
 func (cs *covers) sweep(now time.Time) {
 	cs.swept = now
 	for k, cv := range cs.loaded {
 		if now.Sub(cv.used) > coverIdle {
 			delete(cs.loaded, k)
+		}
+	}
+	for k, at := range cs.failed {
+		if now.Sub(at) >= coverRetry {
+			delete(cs.failed, k)
 		}
 	}
 }
@@ -110,15 +124,20 @@ func (cs *covers) load(k, raw string) {
 	cs.sem <- struct{}{}
 	defer func() { <-cs.sem }()
 	bmp, fresh, err := cs.bitmap(k, raw)
+	if err != nil && os.Getenv("KX_DEBUG") != "" {
+		log.Printf("cover: %v", err)
+	}
 	cs.update(func() {
 		delete(cs.pending, k)
-		if err == nil {
-			cv := &cover{bmp: bmp, used: time.Now()}
-			if fresh {
-				cv.at = time.Now() // fades in; those from the disk show at once
-			}
-			cs.loaded[k] = cv
+		if err != nil {
+			cs.failed[k] = time.Now()
+			return
 		}
+		cv := &cover{bmp: bmp, used: time.Now()}
+		if fresh {
+			cv.at = time.Now() // fades in; those from the disk show at once
+		}
+		cs.loaded[k] = cv
 	})
 }
 
@@ -143,11 +162,12 @@ func (cs *covers) bitmap(k, raw string) (bmp *ui.Bitmap, fresh bool, err error) 
 	if err != nil {
 		return nil, true, err
 	}
-	if runtime.GOOS != "darwin" {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 		bmp, err := ui.DecodeBitmap(data) // no HEIC here
 		return bmp, true, err
 	}
-	// ImageIO reads HEIC, which the CDN serves, and scales it down.
+	// ImageIO on macOS and WIC on Windows read HEIC, which the CDN serves,
+	// and scale it down.
 	img, err := imageio.Decode(data, coverWidth)
 	if err != nil {
 		return nil, true, err
