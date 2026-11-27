@@ -436,6 +436,6 @@ func (a *app) playerPanelBody(c *ui.Context, sp *seriesPage, drawer, forceReveal
 			}
 		})
 	})
-	ui.Text(c, "空格 暂停　← → 5 秒　⇧← ⇧→ 30 秒\n[ ] 倍速　↑ ↓ 换集　D 弹幕").FontSize(11).TextColor(t.TextMuted.Alpha(0.8)).
-		Padding(10, 22, 16, 22).MaxLines(2)
+	ui.Text(c, "空格 暂停　← → 5 秒　"+keys.shift+"← "+keys.shift+"→ 30 秒\n[ ] 倍速　↑ ↓ 换集　D 弹幕").FontSize(11).
+		TextColor(t.TextMuted.Alpha(0.8)).Padding(10, 22, 16, 22).MaxLines(2)
 }

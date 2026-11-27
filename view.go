@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -252,10 +253,11 @@ func (a *app) sectionItem(c *ui.Context, selected, id string, icon *ui.SVG, labe
 }
 
 // header is a page's title, level with the window controls, and what goes
-// beside it.
+// beside it, clear of the window buttons Windows keeps at the right.
 func (a *app) header(c *ui.Context, title string, right func()) {
+	end := max(posterInset, c.TitleBar().Right+12)
 	ui.Row(c).Height(titleBarHeight).Shrink(0).AlignItems(ui.Center).Gap(12).
-		Padding(0, posterInset).DragWindow().Children(func() {
+		Padding(0, end, 0, posterInset).DragWindow().Children(func() {
 		ui.Text(c, title).FontSize(22).Bold().SingleLine()
 		ui.Spacer(c)
 		if right != nil {
@@ -774,6 +776,20 @@ func (a *app) playerAppearance(on bool) {
 // traffic lights (and of the screen's edge in full screen).
 func titleBarLeft(c *ui.Context, gap float32) float32 {
 	return max(c.TitleBar().Left+gap, 16)
+}
+
+// keyNames are how a system writes the modifiers of its shortcuts, as in
+// ⌘F and ⇧← on macOS.
+type keyNames struct{ cmd, shift string }
+
+// keys are this system's: ui.Cmd is Control outside macOS.
+var keys = keyNamesFor(runtime.GOOS)
+
+func keyNamesFor(goos string) keyNames {
+	if goos == "darwin" {
+		return keyNames{cmd: "⌘", shift: "⇧"}
+	}
+	return keyNames{cmd: "Ctrl+", shift: "Shift+"}
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
